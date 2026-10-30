@@ -5,6 +5,8 @@
 [![Architecture](https://img.shields.io/badge/Architecture-MCP%20Protocol--First-brightgreen.svg)](https://modelcontextprotocol.io)
 [![SQL Knowledge](https://img.shields.io/badge/SQL%20Semantic-Obsidian%20Zero--Chunking-orange.svg)](#)
 [![SOP Retrieval](https://img.shields.io/badge/SOP%20Retrieval-Hybrid%20Vector%20%2B%20BM25-purple.svg)](#)
+[![Status](https://img.shields.io/badge/Status-Design%20%2F%20Proposed-yellow.svg)](#)
+
 ---
 
 ## 1. Tổng Quan Kiến Trúc (Architecture Overview)
@@ -76,7 +78,7 @@ $$\text{Agent} = \text{Loop}\Big(\text{Model}(\text{Context}, \text{Tools}) \xri
 
 Việc LangChain bọc cái vòng lặp `if tool_call -> execute -> loop` đơn giản đó qua **15 tầng abstraction rò rỉ** không những biến việc debug thành ác mộng, mà còn tự ý nhét các đoạn hướng dẫn ngầm vào System Prompt (_Opaque Prompt Mutations_ làm tăng **Prompt Entropy** và gây **Attention Collapse**), đồng thời thả nổi vòng lặp gây cháy tiền token và tràn bộ nhớ **V8 Heap OOM** trên Node.js/n8n.
 
-Thay vì dùng LangChain, **Mimir** triển khai trực tiếp qua kiến trúc **Model — Agent (n8n) — MCP Server** với **chế độ kiểm soát vòng lặp phân biệt rõ theo từng luồng (Dual-Track Loop Control)**:
+Thay vì dùng LangChain, **Mimir** triển khai trực tiếp qua kiến trúc **Model — Agent — MCP Server** (nếu dựng luồng low-code thì chạy trên **n8n State Machine**, còn nếu viết code Python thì gọi thẳng **SDK chính hãng của Google (`google-genai`), OpenAI (`openai`) hoặc Anthropic (`anthropic`)** kết hợp **`mcp` SDK** — vừa có sẵn đầy đủ retry, streaming, tool calling chính chủ mà không cần tự viết HTTP `requests` thủ công) với **chế độ kiểm soát vòng lặp phân biệt rõ theo từng luồng (Dual-Track Loop Control)**:
 
 - **Luồng Hỏi Quy Trình / Văn Bản SOP (Track A — Luồng 3) $\implies$ Cho phép `LLM Loop` lặp bình thường (Multi-Hop):** Vì dữ liệu trả về từ công cụ tìm kiếm SOP (`Hybrid Search: Dense + BM25`) chỉ là vài đoạn văn bản ngắn (`< 4KB`), hoàn toàn không đe dọa bộ nhớ V8 Heap và không chứa số liệu nhạy cảm, Agent được phép lặp tự nhiên qua nhiều bước tra cứu để Model đối chiếu chéo các quy định trước khi chốt câu trả lời.
 - **Luồng Gọi Dữ Liệu / Text-to-SQL (Track B — Luồng 2) $\implies$ Cắt sạch vòng lặp (`Single-Hop`) & Gửi thẳng kết quả cho User (Không vòng lại Model):** Riêng với truy vấn cơ sở dữ liệu, Model chỉ làm đúng 1 việc là đọc Schema Obsidian và sinh 1 câu lệnh SQL. Ngay sau khi câu lệnh SQL được đẩy qua **Superset RLS (In-Process DuckDB)**, **kết quả (`PDF`, `MD`, `Excel`, `CSV`, `Ảnh biểu đồ`) được bắn thẳng về cho người dùng cuối mà không quay ngược lại Model nữa** (nếu không có dữ liệu thì báo thẳng _"Bạn không có quyền truy cập hoặc dữ liệu không tồn tại"_). Cách này triệt tiêu 100% nguy cơ lộ dữ liệu thô cho LLM, cắt đứt vòng lặp tự sửa SQL và giải phóng hoàn toàn bộ nhớ điều phối!

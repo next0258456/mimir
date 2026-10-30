@@ -30,7 +30,7 @@ $$\text{Agent} = \text{Loop}\Big(\text{Model}(\text{Context}, \text{Tools}) \xri
 
 * Nếu **Model** yêu cầu gọi công cụ (`tool_calls`) $\to$ **Agent** gọi công cụ đó qua **MCP Server**, nối kết quả trả về vào ngữ cảnh rồi quay lại gọi **Model**.
 * Nếu **Model** chốt câu trả lời (`stop`) $\to$ **Agent** thoát vòng lặp và trả kết quả ra ngoài.
-* Chính vì bản chất của Agent chỉ là vòng lặp này, việc dùng một framework nặng 15 tầng abstraction như LangChain là hoàn toàn vô nghĩa; Mimir biểu diễn trực tiếp luồng điều phối này trên **n8n State Machine** kết hợp **MCP Server** (JSON-RPC 2.0 qua `stdio` / `SSE`).
+* Chính vì bản chất của Agent chỉ là vòng lặp này, việc dùng một framework nặng 15 tầng abstraction như LangChain là hoàn toàn vô nghĩa; Mimir biểu diễn trực tiếp luồng điều phối này trên **n8n State Machine** (hoặc nếu viết bằng Python thì dùng trực tiếp **thư viện SDK chính hãng của Google `google-genai`, OpenAI `openai`, Anthropic `anthropic`** — vốn đã hỗ trợ sẵn retry, streaming, structured output và native tool calling mà không cần tự code bằng `requests` thuần) kết hợp trực tiếp với **MCP Server** (`mcp` SDK chính chủ qua JSON-RPC 2.0 `stdio` / `SSE`).
 
 ### 2.2 Kiểm Soát Vòng Lặp Phân Hóa Theo Hai Luồng (Dual-Track Loop Control)
 Thay vì đánh đồng mọi tác vụ vào một kiểu vòng lặp, Mimir điều khiển `LLM Loop` khác biệt hoàn toàn giữa luồng hỏi quy trình SOP và luồng gọi dữ liệu SQL:

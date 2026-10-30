@@ -10,7 +10,7 @@
 
 > [!CAUTION]
 > **4 Điều Tuyệt Đối Không Được Làm Khi Dựng Hệ Thống Này:**
-> 1. **CẤM cài `langchain` hoặc `langgraph`:** Bản chất của thứ gọi là **"AI Agent" chỉ đơn giản là một vòng lặp gọi Model (`LLM Loop`)** — nếu Model đòi gọi tool thì thực thi rồi lặp lại, nếu Model trả lời xong thì thoát. Đừng cài một framework bọc 15 tầng abstraction tự ý sửa System Prompt chỉ để chạy một vòng lặp; hãy dựng trực tiếp qua **Model (LLM)** — **Agent (Bộ điều phối trên n8n)** — **MCP Server (JSON-RPC 2.0)**.
+> 1. **CẤM cài `langchain` hoặc `langgraph`:** Bản chất của thứ gọi là **"AI Agent" chỉ đơn giản là một vòng lặp gọi Model (`LLM Loop`)** — nếu Model đòi gọi tool thì thực thi rồi lặp lại, nếu Model trả lời xong thì thoát. Đừng cài một framework bọc 15 tầng abstraction tự ý sửa System Prompt chỉ để chạy một vòng lặp; hãy dựng trực tiếp qua **Model (LLM)** — **Agent (Bộ điều phối trên n8n, hoặc nếu code Python thì dùng thẳng SDK chính hãng `google-genai`, `openai`, `anthropic` — không cần tự viết `requests` thủ công)** — **MCP Server (`mcp` SDK / JSON-RPC 2.0)**.
 > 2. **CẤM nhét Schema SQL vào Vector DB & CẤM cắt nhỏ (`chunking`) file Schema:** Mỗi bảng dữ liệu bắt buộc phải nằm trọn vẹn trong **1 file Markdown (`.md`) duy nhất trên Obsidian**, nối với bảng khác bằng `[[Wikilinks]]` và ghi rõ các cột lỗi lịch sử trong mục `DATA_TRAP`.
 > 3. **CẤM cho AI nối thẳng vào Database bằng quyền Admin & CẤM để `LLM Loop` lặp trên luồng gọi Data:**
 >    * Với **luồng hỏi quy trình SOP (Văn bản chữ)**: Cứ để `LLM Loop` lặp bình thường vì dữ liệu nhẹ (`< 4KB`).
