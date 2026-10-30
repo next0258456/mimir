@@ -5,7 +5,6 @@
 [![Architecture](https://img.shields.io/badge/Architecture-MCP%20Protocol--First-brightgreen.svg)](https://modelcontextprotocol.io)
 [![SQL Knowledge](https://img.shields.io/badge/SQL%20Semantic-Obsidian%20Zero--Chunking-orange.svg)](#)
 [![SOP Retrieval](https://img.shields.io/badge/SOP%20Retrieval-Hybrid%20Vector%20%2B%20BM25-purple.svg)](#)
-[![Status](https://img.shields.io/badge/Status-Design%20%2F%20Proposed-yellow.svg)](#)
 
 ---
 
