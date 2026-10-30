@@ -10,7 +10,7 @@
 
 > [!CAUTION]
 > **4 Điều Tuyệt Đối Không Được Làm Khi Dựng Hệ Thống Này:**
-> 1. **CẤM cài `langchain` hoặc `langgraph`:** Bản chất của thứ gọi là **"AI Agent" chỉ đơn giản là một vòng lặp gọi Model (`LLM Loop`)** — nếu Model đòi gọi tool thì thực thi rồi lặp lại, nếu Model trả lời xong thì thoát. Đừng cài một framework bọc 15 tầng abstraction tự ý sửa System Prompt chỉ để chạy một vòng lặp; hãy dựng trực tiếp qua **Model (LLM)** — **Agent (Bộ điều phối trên n8n, hoặc nếu code Python thì dùng thẳng SDK chính hãng `google-genai`, `openai`, `anthropic` — không cần tự viết `requests` thủ công)** — **MCP Server (`mcp` SDK / JSON-RPC 2.0)**.
+> 1. **CẤM cài `langchain` hoặc `langgraph` (Không xài "Wrapper của Wrapper"):** Bản chất của thứ gọi là **"AI Agent" chỉ đơn giản là một vòng lặp gọi Model (`LLM Loop`)** — nếu Model đòi gọi tool thì thực thi rồi lặp lại, nếu Model trả lời xong thì thoát. Đừng cài một framework bên thứ ba bọc 15 tầng abstraction tự ý sửa System Prompt; hãy dựng trực tiếp qua **Model (LLM)** — **Agent (Bộ điều phối trên n8n, hoặc nếu code Python thì dùng thẳng bộ SDK chính hãng: `claude-agent-sdk` của Anthropic, `openai-agents` của OpenAI, hoặc `google-genai` của Google)** — **MCP Server (JSON-RPC 2.0)**.
 > 2. **CẤM nhét Schema SQL vào Vector DB & CẤM cắt nhỏ (`chunking`) file Schema:** Mỗi bảng dữ liệu bắt buộc phải nằm trọn vẹn trong **1 file Markdown (`.md`) duy nhất trên Obsidian**, nối với bảng khác bằng `[[Wikilinks]]` và ghi rõ các cột lỗi lịch sử trong mục `DATA_TRAP`.
 > 3. **CẤM cho AI nối thẳng vào Database bằng quyền Admin & CẤM để `LLM Loop` lặp trên luồng gọi Data:**
 >    * Với **luồng hỏi quy trình SOP (Văn bản chữ)**: Cứ để `LLM Loop` lặp bình thường vì dữ liệu nhẹ (`< 4KB`).
@@ -74,16 +74,16 @@ Với các file quy định công ty, sổ tay nhân sự (tổng cộng dưới
 * Đẩy vào một Vector DB thông thường (Qdrant hoặc PostgreSQL `pgvector`).
 * **Bắt buộc bật chế độ Hybrid Search = `Dense Embedding` (tìm theo ý nghĩa) + `BM25` (tìm chính xác mã quy trình, số điều khoản) + `RRF`**, và đóng gói thành MCP Tool chỉ lấy ra **Top-3 đoạn (`< 4KB`)** cho mỗi câu hỏi.
 
-### Bước 3: Dựng Luồng Điều Phối Giữa Model và Agent (Trên n8n + MCP)
-Thiết lập luồng điều phối chuẩn giữa **Agent (n8n)**, **Model (LLM API)** và **MCP Server** theo đúng 3 nguyên tắc:
-1. **Biên nhận thức (Inbound):** Luồng n8n kiểm tra `Zalo_User_ID` đã có `Verified JWT` (hạn 10 tiếng) và không bị khóa bởi **Kill-Switch** trên Google Sheet Master IAM rồi mới chuyển câu hỏi vào **Agent**.
+### Bước 3: Dựng Luồng Điều Phối Giữa Model và Agent (Trên n8n hoặc Official SDK + MCP)
+Thiết lập luồng điều phối chuẩn giữa **Agent (n8n hoặc bộ SDK chính hãng `claude-agent-sdk` / `openai-agents` / `google-genai`)**, **Model (LLM API)** và **MCP Server** theo đúng 3 nguyên tắc:
+1. **Biên nhận thức (Inbound):** Luồng điều phối kiểm tra `Zalo_User_ID` đã có `Verified JWT` (hạn 10 tiếng) và không bị khóa bởi **Kill-Switch** trên Google Sheet Master IAM rồi mới chuyển câu hỏi vào **Agent**.
 2. **Phân vai Model & Agent:**
-   * **Model** nhận câu hỏi để phân loại vào 1 trong 3 nhánh trên node Switch của **Agent** (Luồng 1: *Saved Metrics*, Luồng 2: *Text-to-SQL*, Luồng 3: *SOP Search*).
+   * **Model** nhận câu hỏi để phân loại vào 1 trong 3 nhánh của **Agent** (Luồng 1: *Saved Metrics*, Luồng 2: *Text-to-SQL*, Luồng 3: *SOP Search*).
    * Ở Luồng 2 (*Text-to-SQL*), **Agent** gọi MCP đọc file `.md` từ Obsidian đưa cho **Model** sinh câu lệnh SQL, sau đó **Agent** khóa cứng cầu dao **Single-Hop** (chỉ cho phép thực thi đúng 1 nhịp duy nhất qua API `/api/v1/sqllab/execute/` của **Superset** kèm Header `Authorization: Bearer <Verified_JWT>`).
 3. **Trả thẳng kết quả cho User (Không vòng lại Model):** Kết quả trả về từ Superset (đã được **In-Process DuckDB** tính toán và lọc RLS) được xuất thẳng về Zalo/Web cho người dùng dưới dạng **file `PDF`, `MD`, `Excel`, `CSV`, hoặc `Ảnh biểu đồ`** mà **tuyệt đối không quay ngược lại qua Model nữa**. Nếu kết quả rỗng (0 dòng), hệ thống báo thẳng: *"Bạn không có quyền truy cập hoặc dữ liệu không tồn tại"*.
 
 ### Bước 4: Checklist Nghiệm Thu Trước Khi Bàn Giao (Chỉ Cần Đánh Dấu `[x]`)
-- [ ] Hệ thống **không sử dụng** `langchain` hay `langgraph`; phân tách rõ **Model**, **Agent (n8n)** và **MCP Server**.
+- [ ] Hệ thống **không sử dụng** `langchain` hay `langgraph`; phân tách rõ **Model**, **Agent (n8n hoặc `claude-agent-sdk` / `openai-agents` / `google-genai`)** và **MCP Server**.
 - [ ] Mọi bảng SQL đều đã có file `.md` nguyên vẹn trên Obsidian kèm mục `> [!WARNING] DATA_TRAP` (không bị cắt chunk).
 - [ ] Mọi câu lệnh SQL do **Model** viết ra đều được **Agent** đẩy qua **Superset SQL Lab** kèm `Verified JWT` của người dùng.
 - [ ] Nhánh truy vấn dữ liệu đã khóa cứng **Cầu dao Single-Hop**: Kết quả thực thi (`PDF / MD / Excel / CSV / Ảnh biểu đồ`) hoặc thông báo từ chối truy cập được gửi thẳng cho User, **không vòng ngược lại qua Model**.
