@@ -185,7 +185,7 @@ flowchart LR
 ```
 
 ### Tại Sao Hybrid Search (`Dense + BM25`) Là Điểm Rơi Hoàn Hảo Ở Quy Mô `< 50k Chunks`?
-1. **Khắc phục điểm mù từ khóa của Vector đơn thuần:** Dense Embedding hiểu được câu hỏi diễn giải tự nhiên nhưng dễ trượt các mã hiệu đặc thù (như mã quy trình `SOP-KT-09`, tài khoản kế toán `TK 131`, hay mức phạt cố định). Chỉ mục **BM25** bắt chính xác tuyệt đối các chuỗi ký tự này.
+1. **Kết hợp Contextual Dense Embedding (`pplx-embed-v2-context`) và Khớp từ khóa chính xác (`BM25`):** Nhánh Dense Vector ưu tiên sử dụng thế hệ mô hình nhúng bảo toàn ngữ cảnh toàn cục như [**`perplexity-ai/pplx-embed-v2-context-9b`**](https://huggingface.co/perplexity-ai/pplx-embed-v2-context-9b) (nhúng các phân đoạn trong *Contextual Mode* để mỗi vector vẫn giữ được mạch văn bản bao quanh, kết hợp nén `int8` + Matryoshka `1024-dim`), trong khi chỉ mục **BM25** bắt chính xác tuyệt đối các mã hiệu đặc thù (như mã quy trình `SOP-KT-09`, tài khoản kế toán `TK 131`, hay mức phạt cố định).
 2. **Hợp nhất thứ hạng bằng RRF (Reciprocal Rank Fusion):** Điểm số giữa Dense Vector và BM25 được hợp nhất công bằng theo công thức:
    $$\text{RRF}(d) = \frac{1}{k + r_{\text{dense}}(d)} + \frac{1}{k + r_{\text{bm25}}(d)} \quad (k = 60)$$
    giúp những đoạn văn bản vừa khớp ý nghĩa vừa chứa đúng mã hiệu điều khoản luôn nổi lên vị trí Top-1.
